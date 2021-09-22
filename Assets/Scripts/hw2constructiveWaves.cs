@@ -5,21 +5,22 @@ using UnityEngine;
 public class hw2constructiveWaves : MonoBehaviour
 {
     // abstraction of sin waves
-    private class Wave {
+    public class Wave {
         private float amp, freq, offset;
 
-        public Wave() {
-            amp = Random.Range(0f, 20f);
-            freq = random(0f, 50f);
-            offset = random(0f, 90f);
+        public Wave() 
+        {
+            amp = Random.Range(5f, 20f);
+            freq = Random.Range(0f, 50f);
+            offset = Random.Range(0f, 90f);
         }
 
-        public int getSin(theta) {
-            return Mathf.Sin( theta / frequency) + offset);
+        public float getSin(float theta) 
+        {
+            return Mathf.Sin( (theta / freq) + offset);
         }
     }
 
-/*
     // adjust waveform
     public float amplitude, frequency, offset;
 
@@ -27,7 +28,6 @@ public class hw2constructiveWaves : MonoBehaviour
     public int iterations;
     // allow resizing seeds on the fly by looking for changes in iterations
     private int prevIterations;
-*/
 
     // multiplier of time delta for each frame
     public float speed;
@@ -35,24 +35,35 @@ public class hw2constructiveWaves : MonoBehaviour
     // when true, counter += speed * time.delta, else nothing
     public bool oscillate;
 
+    // change material 4 all children
+    public Material material;
+
     // keep track of time in scene
     private float counter;
 
     // an array of seeds with which to construct waveforms
-    private Wave[] waves;
+    private Wave[] waves; 
 
     // Start is called before the first frame update
     void Start()
     {
-        amplitude = 60f;
-        frequency = 31.9f;
         counter = 0f;
+        amplitude = 1f;
+        frequency = 1f;
         offset = 0f;
         speed = 1f;
         iterations = 2;
         prevIterations = iterations;
         oscillate = true;
-        seeds = new Wave[iterations];
+        material = this.transform.GetChild(0).GetComponent<Renderer>().material;
+        waves = new Wave[iterations];
+        initializeWaves();
+    }
+
+    void initializeWaves() {
+        for (int i = 0; i < iterations; i++) {
+            waves[i] = new Wave();
+        }
     }
 
     Vector3 calculatePosition(Vector3 position) {
@@ -64,9 +75,9 @@ public class hw2constructiveWaves : MonoBehaviour
     Vector3 calculateHeight(Vector3 position) {
         float y = 0;
         for (int i = 0; i < iterations; i++) {
-            y += Mathf.Sin( (counter+ seeds[i] + position.x  / frequency) + offset);
+            y += waves[i].getSin( ((counter + position.x)/frequency) + offset);
         }
-        y = (y / iterations) * amplitude;
+        y = y * amplitude;
         return new Vector3(1, y, 1);
     }
 
@@ -74,26 +85,23 @@ public class hw2constructiveWaves : MonoBehaviour
     void updateChildren() {
         foreach(Transform child in this.transform)
         {
-            child.transform.localScale = calculateHeight(child.transform.position);
-            child.transform.position = calculatePosition(child.transform.position);
-        }
-    }
+            child.transform.localScale = calculateHeight(child.transform.localPosition);
+            child.transform.localPosition = calculatePosition(child.transform.localPosition);
 
-/*
-    void generateSeeds() {
-        for (int i = 0; i < iterations; i++) {
-            seeds[i] = Random.Range(0f, 1000f);
+            // https://answers.unity.com/questions/13356/how-can-i-assign-materials-using-c-code.html
+            if (child.GetComponent<Renderer>().material != material)
+            {
+                child.GetComponent<Renderer>().material = material;
+            }
         }
     }
-*/
 
     void iterationValidation() {
         if (iterations != prevIterations) {
-            System.Array.Resize(ref seeds, iterations);
-            generateSeeds();
+            System.Array.Resize(ref waves, iterations);
+            initializeWaves();
             prevIterations = iterations;
         }
-
     }
 
     // Update is called once per frame
