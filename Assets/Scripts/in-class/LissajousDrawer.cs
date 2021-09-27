@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Lissajous : MonoBehaviour
+public class LissajousDrawer : MonoBehaviour
 {
     public float CounterX;
     public float CounterY;
