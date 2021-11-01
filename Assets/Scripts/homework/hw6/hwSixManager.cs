@@ -4,12 +4,16 @@ using UnityEngine;
 
 public class hwSixManager : MonoBehaviour
 {
+    public Camera camera;
     public Texture2D image;
-    public int particleCount = 100;
-    public float randomRange = 10;
+    public int pixelStep = 1;
+    public float perlinStep = 1;
+
     public GameObject particleObject;
-    public bool rebuild;
     public Material material;
+
+    public bool rebuild;
+
     private List<hwSixParticle> particles;
 
     // Start is called before the first frame update
@@ -31,6 +35,17 @@ public class hwSixManager : MonoBehaviour
         }
     }
 
+    void adjustCamera() 
+    {
+        camera.transform.position = new Vector3(
+            image.width / 2,
+            image.height / 2,
+            -10
+        );
+
+        camera.orthographicSize = Mathf.Max(image.width, image.height) / 2;
+    }
+
     void rebuildParticles()
     {
         particles.Clear();
@@ -41,21 +56,15 @@ public class hwSixManager : MonoBehaviour
         createParticles();
     }
 
-    hwSixParticle createParticle()
+    hwSixParticle createParticle(Color color, Vector3 position, Vector3 scale, float rotation)
     {
         hwSixParticle p = new hwSixParticle();
         p.setObject(particleObject, this.transform);
         p.createMaterial(material);
-        p.setColor(
-            Random.ColorHSV(0f, 1f, 1f, 1f, 0.5f, 1f)
-        );
-        p.setPosition(
-            new Vector3(
-                Random.Range(-randomRange/2, randomRange/2),
-                Random.Range(-randomRange/2, randomRange/2),
-                Random.Range(-randomRange/2, randomRange/2)
-            )
-        );
+        p.setColor(color);
+        p.setPosition(position);
+        p.setScale(scale);
+        p.setRotation(rotation);
         
         return p;
     }
@@ -63,19 +72,31 @@ public class hwSixManager : MonoBehaviour
     void createParticles()
     {
         if (particles == null) {return;}
-        for (int i = 0; i < particleCount; i++)
-        {
-            particles.Add( createParticle() );
-        }
+
+        loopThroughImage();
+        adjustCamera();
     }
 
     void loopThroughImage()
     {
-        for (int x = 0; x < image.width; x++)
+        for (int x = 0; x < image.width; x+=pixelStep)
         {
-            for (int y =0; y < image.height; y++)
+            for (int y =0; y < image.height; y+=pixelStep)
             {
-                Debug.Log(image.GetPixel(x, y));
+                Color c = image.GetPixel(x, y);
+                Vector3 pos = new Vector3(
+                    x,y,
+                    0
+                );
+                float noiseVal = Mathf.PerlinNoise(x * perlinStep, y * perlinStep);
+
+                float noiseScale = (noiseVal + 1) * pixelStep;
+
+                float rotation = noiseVal * 90;
+
+                Vector3 scale = new Vector3(noiseScale, noiseScale, 1);
+
+                createParticle(c, pos, scale, rotation);
             }
         }
     }

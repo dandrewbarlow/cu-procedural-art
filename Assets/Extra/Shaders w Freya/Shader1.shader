@@ -17,14 +17,32 @@ Shader "Unlit/Shader1"
     SubShader
     {
         // help define when to queue rendering & buidling render pipeline
-        Tags { "RenderType"="Opaque" }
+        Tags { 
+            "RenderType"="Transparent" // tell render pipeline what type it is
+            "Queue"="Transparent" // change render order
+         }
 
         // LOD 100
 
         // Shader Code
         Pass
         {
-            // begin shader code
+            
+            // blending settings //////////////////////////////////////////////////
+
+            Cull Off // which side of the geometry to render (Front || Back || Off)
+
+            ZWrite Off // Don't Write to Depth Buffer
+
+            // ZTest LEqual // default val; if depth value <= value already written to depth buffer, then show it
+            // ZTest Always // always draw it
+            // ZTest GEqual // only draw when behind an object
+
+            Blend One One // Additive Blending
+            // Blend DstColor Zero // Multiplicitave Blending
+
+
+            // begin shader code //////////////////////////////////////////////////
             CGPROGRAM
 
             // tells compiler which function is the vertex shader & which is the fragment shader
@@ -36,6 +54,8 @@ Shader "Unlit/Shader1"
 
             // Unity specific helper functions
             #include "UnityCG.cginc"
+
+            #define TAU 6.28318530718
 
             // UNIFORMS: variables for properies
                 // freya finds these boilerplatey
@@ -133,18 +153,29 @@ Shader "Unlit/Shader1"
                 // UNITY_APPLY_FOG(i.fogCoord, col);
 
                 // use inverseLerp to create new value based on start & end locations & x value
-                float t = InverseLerp( _ColorStart, _ColorEnd, i.uv.x );
+                // float t = InverseLerp( _ColorStart, _ColorEnd, i.uv.x );
 
                 // used to help figure out if values are going over 1
                 // frac = v - floor(v)
                 // t = frac(t);
 
                 // saturate is bad function name; in this context it just clips to 0 if t<0 || 1 if t>1
-                t = saturate(t);
+                // t = saturate(t);
+
+                float xOffset = cos(i.uv.y*TAU*5)*.05;
+
+                float t = cos ( (i.uv.x + xOffset - _Time.y * 0.5) * TAU * 2)*2 + 0.5;
+                t *= 1-i.uv.x;
+
+
+                // hacky way to remove top & bottom of a mesh
+                float topBottomRemover = (abs(i.normal.y) < 0.8);
+                float waves = t * topBottomRemover;
+
 
                 // lerp colors for gradient blend based on t
                 float4 outColor = lerp( _ColorA, _ColorB, t);
-
+                outColor = outColor * waves;
 
                 // returns a color 🌈
                 return outColor;

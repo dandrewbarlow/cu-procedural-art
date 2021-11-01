@@ -22,10 +22,14 @@ public class hwSixParticle : MonoBehaviour
         Renderer renderer = particleObject.GetComponent<Renderer>();
         renderer.material = newMaterial;
     }
-
-    public void setRotation(Vector3 angle)
+    public void setScale(Vector3 scale)
     {
-        // particleObject.local = angle;
+        particleObject.transform.localScale = scale;
+    }
+
+    public void setRotation(float angle)
+    {
+        particleObject.transform.localEulerAngles = new Vector3(0, 0, angle);
     }
 
     public void setColor(Color c)
