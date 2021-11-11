@@ -158,7 +158,7 @@ Light:
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10
   m_Shadows:
-    m_Type: 2
+    m_Type: 0
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
@@ -191,10 +191,10 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 1
-  m_Lightmapping: 4
+  m_Lightmapping: 2
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
-  m_BounceIntensity: 1
+  m_BounceIntensity: 0
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
   m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
@@ -329,9 +329,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   camera: {fileID: 977541600}
-  image: {fileID: 2800000, guid: f363a4e819510d930a4c6434a6abe622, type: 3}
-  pixelStep: 20
-  perlinStep: 0.01
+  image: {fileID: 2800000, guid: e93c18e9d94c71c5d9e17f11a9762880, type: 3}
+  pixelStep: 10
+  perlinStep: 0.001
   particleObject: {fileID: 1704149270}
   material: {fileID: 2100000, guid: d6a5a7932b29d9ab4b98049a0e307c7f, type: 2}
   rebuild: 0
@@ -361,8 +361,9 @@ GameObject:
   - component: {fileID: 1704149273}
   - component: {fileID: 1704149272}
   - component: {fileID: 1704149271}
+  - component: {fileID: 1704149275}
   m_Layer: 0
-  m_Name: Quad
+  m_Name: pixel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -445,3 +446,15 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1704149275
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1704149270}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2d66b7da4c564166b49d0e180879b54, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

@@ -14,6 +14,7 @@ public class hwSixManager : MonoBehaviour
 
     public bool rebuild;
 
+    private float randomPerlinOffset = 0f;
     private List<hwSixParticle> particles;
 
     // Start is called before the first frame update
@@ -28,6 +29,12 @@ public class hwSixManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        // foreach (hwSixParticle particle in particles)
+        // {
+        //     Debug.Log("test");
+        //     particle.Update();
+        // }
+
         if (rebuild)
         {
             rebuildParticles();
@@ -48,6 +55,7 @@ public class hwSixManager : MonoBehaviour
 
     void rebuildParticles()
     {
+        randomPerlinOffset = Random.Range(0f, 1000f);
         particles.Clear();
         foreach(Transform child in this.transform)
         {
@@ -58,6 +66,7 @@ public class hwSixManager : MonoBehaviour
 
     hwSixParticle createParticle(Color color, Vector3 position, Vector3 scale, float rotation)
     {
+        // hwSixParticle p = gameObject.AddComponent(typeof(hwSixParticle)) as hwSixParticle;
         hwSixParticle p = new hwSixParticle();
         p.setObject(particleObject, this.transform);
         p.createMaterial(material);
@@ -88,13 +97,16 @@ public class hwSixManager : MonoBehaviour
                     x,y,
                     0
                 );
-                float noiseVal = Mathf.PerlinNoise(x * perlinStep, y * perlinStep);
+                float noiseVal = Mathf.PerlinNoise(
+                    x * perlinStep + randomPerlinOffset,
+                    y * perlinStep + randomPerlinOffset
+                );
 
                 float noiseScale = (noiseVal + 1) * pixelStep;
 
-                float rotation = noiseVal * 90;
+                float rotation = 0;//noiseVal * 90;
 
-                Vector3 scale = new Vector3(noiseScale, noiseScale, 1);
+                Vector3 scale = new Vector3(pixelStep,pixelStep,1);//noiseScale, noiseScale, 1);
 
                 createParticle(c, pos, scale, rotation);
             }

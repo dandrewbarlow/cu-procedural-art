@@ -8,7 +8,15 @@ public class hwSixParticle : MonoBehaviour
     private Color particleColor;
 
     void Start() {}
-    void Update(){}
+
+    public void Update(){
+        // Debug.Log(particleObject.transform.localPosition);
+        // particleObject.transform.localPosition = particleObject.transform.localPosition + new Vector3(
+        //     Random.insideUnitCircle.x / 10,
+        //     Random.insideUnitCircle.y / 10,
+        //     0
+        // );
+    }
 
     public void setObject(GameObject obj, Transform parent)
     {
