@@ -51,7 +51,12 @@ Shader "Unlit/hw6Shader"
 
             float4 frag (Interpolator i) : SV_Target
             {
-                return _Color;
+                float4 c = _Color;
+
+                c *= (sin( length(i.uv-float2(0.5, 0.5)) * 20+sin(i.uv.x) ) + 1);
+                // c.xy *= sin(i.uv);
+
+                return c;
             }
             ENDCG
         }

@@ -1,0 +1,40 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+// RWTexture2D<float4> Result;
+
+struct Cube
+{
+    float3 position;
+    float4 color;
+};
+
+RWStructuredBuffer<Cube> cubes;
+float resolution;
+
+// pseudorandom number generator
+float rand(float2 co)
+{
+    return ( frac(sin(dot(co.xy, float2(12.9898, 78.233)) * 43758.5453)) * 1);
+}
+
+[numthreads(10, 1, 1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float xPos = id.x / resolution;
+
+    Cube cube = cubes[id.x];
+
+    float zPos = rand(float2(xPos, cube.position.z));
+    cube.position.z = zPos;
+
+    float r = rand(float2(cube.color.r, cube.color.g));
+    float g = rand(float2(cube.color.g, cube.color.b));
+    float b = rand(float2(cube.color.b, cube.color.r));
+
+    cube.color = float4(r, g, b, 1.0);
+
+    cubes[id.x] = cube;
+}
