@@ -30,6 +30,7 @@ public class computeShaderTest : MonoBehaviour
     {
         objects = new List<GameObject>();
         data = new Cube[count * count];
+
         for(int x = 0; x < count; x++)
         {
             for(int y = 0; y < count; y++)
@@ -81,6 +82,8 @@ public class computeShaderTest : MonoBehaviour
 
         computeShader.SetBuffer(0, "cubes", cubesBuffer);
         computeShader.SetFloat("resolution", data.Length);
+        computeShader.SetFloat("repetitions", repetitions);
+        computeShader.SetFloat("seed", Random.Range(0f,100f));
 
         int kernelHandle = computeShader.FindKernel("CSMain");
         computeShader.Dispatch(kernelHandle, data.Length / 10, 1, 1);
@@ -96,6 +99,7 @@ public class computeShaderTest : MonoBehaviour
         }
 
         cubesBuffer.Dispose();
+        Debug.Log("GPU Randomize Finished");
     }
 
     private void OnGUI() {
