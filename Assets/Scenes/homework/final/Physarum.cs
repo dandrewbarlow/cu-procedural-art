@@ -39,45 +39,11 @@ public class Physarum : MonoBehaviour
     {
         public float angle;
         public Vector2 position;
-        private Vector2 bounds;
 
-        public Agent(float ang, Vector2 pos, Vector2 boundaries)
+        public Agent(float ang, Vector2 pos)
         {
             angle = ang;
             position = pos;
-            bounds = boundaries;
-        }
-
-        public void rotate(float theta)
-        {
-            angle += theta;
-        }
-
-        public void move(Vector2 delta)
-        {
-            position += delta;
-            boundsCheck();
-        }
-
-        public void boundsCheck()
-        {
-            if (position.x < 0)
-            {
-                position.x = bounds.x - position.x;
-            }
-            else if (position.x > bounds.x)
-            {
-                position.x = position.x - bounds.x;
-            }
-
-            if (position.y < 0)
-            {
-                position.y = bounds.y - position.y;
-            }
-            else if (position.y > bounds.y)
-            {
-                position.y = position.y - bounds.y;
-            }
         }
     }
 
@@ -85,23 +51,31 @@ public class Physarum : MonoBehaviour
 
     // Parameters (for more info, see Jones, 134)
 
+    // Misc Settings
+    public int resolution = 200;
+
     // particle object settings
     public Mesh mesh;
     public Material material;
 
     // Agent Variables
     public int agentAmount = 100;
+
     [Range(0f,90f)]
     public int agentRotationAngle = 45;
+
+    [Range(1, 500)]
+    public int spawnRange = 50;
+
     public int stepSize = 1;
 
     // Sensor Variables
     public float sensorAngle = 45;
-    public int sensorWidth = 1;
+
+    // public int sensorWidth = 1;
+
     public int sensorOffset = 9;
 
-    // Misc Settings
-    public int resolution = 200;
 
     [Range(0f,1f)]
     public float probabilityOfRandomChange;
@@ -109,15 +83,19 @@ public class Physarum : MonoBehaviour
     [Range(0f,1f)]
     public float sensitivityThreshold;
 
-    [Range(0f,1f)]
+    [Range(0f,5f)]
     public float depositPerStep;
 
-    [Range(0f,5f)]
-    public float diffusionKernelSize;
+    [Range(2,6)]
+    public int diffusionKernelSize = 3;
 
     [Range(0f, 1f)]
     public float decayFactor;
 
+    // Display
+    private Texture2D trailTexture;
+    // private Sprite trailSprite;
+    // private SpriteRenderer spriteRenderer;
 
     // PRIVATE //////////////////////////////////////////////////
 
@@ -127,8 +105,6 @@ public class Physarum : MonoBehaviour
     private List<GameObject> agentObjects;
     private float[,] trailMap;
 
-    // Utility
-    private static System.Random rng = new System.Random();  
 
     // METHODS //////////////////////////////////////////////////
 
@@ -136,17 +112,21 @@ public class Physarum : MonoBehaviour
 
         // INITIALIZATION //////////////////////////////
 
+        // create data structures
         agentMap = new Agent[resolution,resolution];
         agentList = new List<Agent>();
-        agentObjects = new List<GameObject>();
+        // agentObjects = new List<GameObject>();
+        trailMap = new float[resolution, resolution];
+        trailTexture = new Texture2D(resolution, resolution);
 
-        int spawnedAgents = 0;
-
+        // create agents
         for(int i = 0; i < agentAmount; i++)
         {
 
-            int x = Random.Range(0, resolution);
-            int y = Random.Range(0, resolution);
+            int min = (resolution / 2) - spawnRange;
+            int max = (resolution / 2) + spawnRange;
+            int x = Random.Range(min, max);
+            int y = Random.Range(min, max);
 
             // find valid random placement
             while(agentMap[x,y] != null)
@@ -158,44 +138,35 @@ public class Physarum : MonoBehaviour
             // create a new agent
             Agent agent = new Agent(
                 Random.Range(0f, 360f),             // random heading
-                new Vector2(x, y),                  // map pos
-                new Vector2(resolution, resolution) // boundaries
+                new Vector2(x, y)                  // map pos
             );
 
             // Add it to data structs
             agentMap[x,y] = agent;
             agentList.Add(agent);
         }
-             
-        trailMap = new float[resolution, resolution];
+
+        for (int x = 0; x < resolution; x++)
+        {
+            for (int y = 0; y < resolution; y++)
+            {
+                trailMap[x,y] = 0.0f;
+            }
+        }
     }
 
     void Update(){
         MotorStage();
-        RenderAgents();
+        SensoryStage();
+        // RenderAgents();
+        RenderTrail();
+        Decay();
     }
 
     // (Jones, 133)
     private void MotorStage()
     {
-        /* PSEUDOCODE
-        foreach(agent in agents)
-        {
-            attempt to move forward in current direction
 
-            if (moved forward successfully)
-            {
-                depositTrailInNewLocation()
-            }
-            else
-            {
-                chooseRandomNewOrientation()
-            }
-        }
-        */
-
-        // TODO: random selection process to avoid sequential bias
-        // TODO: shuffle agentList
         agentList.Shuffle();
 
         // transition
@@ -250,109 +221,207 @@ public class Physarum : MonoBehaviour
         // if new position is not occupied
         if ( agentMap[x, y] == null)
         {
-            return new Agent(agent.angle, newPos, new Vector2(resolution,resolution));
+            return new Agent(agent.angle, newPos);
         }
         else
         {
-            agent.angle += Mathf.Pow(-1, Random.Range(0, 1)) * agentRotationAngle;
+            if (Random.Range(0f, 1f) < probabilityOfRandomChange)
+            {
+                agent.angle += Mathf.Pow(-1, Random.Range(0, 1)) * agentRotationAngle;
+            }
             return agent;
         }
     }
 
-    // TODO: DEPOSIT CHEMOATTRACTANT
     private void Deposit(int x, int y)
     {
-        // diffuse Chemoattractant in an area (s=diffusionKernelSize) of a given position
+        trailMap[x,y] += depositPerStep;
 
+        // diffuse Chemoattractant in an area (s=diffusionKernelSize) of a given position
+        // uses mean filter https://homepages.inf.ed.ac.uk/rbf/HIPR2/mean.htm
+
+        int n = 0;
+        float sum = 0;
+
+        for (int i = x - (diffusionKernelSize / 2); i < x + (diffusionKernelSize / 2); i++)
+        {
+            for (int j = y - (diffusionKernelSize / 2); j < y + (diffusionKernelSize / 2); j++)
+            {
+                if (BoundsCheck(i) && BoundsCheck(j))
+                {
+                    sum += trailMap[i,j];
+                    n++;
+                }
+            }
+        }
+
+        float average = sum / (float)n;
         for (int i = x - (int)(diffusionKernelSize / 2); i < x + (int)(diffusionKernelSize / 2); i++)
         {
             for (int j = y - (int)(diffusionKernelSize / 2); j < y + (int)(diffusionKernelSize / 2); j++)
             {
                 if (BoundsCheck(i) && BoundsCheck(j))
                 {
-                    trailMap[i,j] += depositPerStep;
+                    trailMap[i,j] = average;
                 }
             }
         }
-
     }
     
     // returns true if within bounds, false if not
     private bool BoundsCheck(int i)
     {
-        return (i >= 0 || i < resolution);
+        return (i >= 0 && i < resolution);
     }
 
     private void SensoryStage()
     {
-        // TODO: Implement
-        /* PSEUDOCODE
 
-        foreach(agent in agents)
+        foreach (Agent agent in agentList)
         {
-            FL = leftSensor
-            F = middleSensor
-            FR = rightSensor
+            // sample chemoattractants near agent
+            float[] samples = SampleTrailMap(agent);
 
-            if (F > FL) && (F > FR)
+            // Boilerplate-y, but makes code marginally more readable
+            float FL = samples[0];
+            float F = samples[1];
+            float FR = samples[2];
+
+
+            if (F > FL && F > FR)
             {
-                stay in same direction
+                // stay in same direction
+                return;
             }
-            else if (F < FL) && (F < FR)
+            else if (F < FL && F < FR)
             {
-                rotate randomly left or right by RA
+                // rotate randomly left or right by RA
+                agent.angle += Mathf.Pow(-1, Random.Range(0, 1)) * agentRotationAngle;
             }
             else if (FL < FR)
             {
-                rotate right by RA
+                // rotate right by RA
+                agent.angle += agentRotationAngle;
             }
             else if (FR < FL)
             {
-                rotate left by RA
+                // rotate left by RA
+                agent.angle -= agentRotationAngle;
             }
             else
             {
-                continue in same direction
+                // continue in same direction
+                return;
             }
         }
-        */
     }
 
-    private void DestroyAgents()
+    // whew. this is the individual sampling logic
+    private float[] SampleTrailMap(Agent agent)
     {
-        if (agentObjects.Count > 0)
+
+        float FL, F, FR;
+        FL = F = FR = 0;
+
+        // Left Sensor
+        int FLx = (int) (sensorOffset * Mathf.Cos(agent.angle + sensorAngle) + agent.position.x);
+        int FLy = (int) (sensorOffset * Mathf.Sin(agent.angle + sensorAngle) + agent.position.x);
+
+        if (BoundsCheck(FLx) && BoundsCheck(FLy))
         {
-            foreach (GameObject obj in agentObjects)
+            FL = trailMap[FLx, FLy];
+        }
+
+        // Middle Sensor
+        int Fx = (int) (sensorOffset * Mathf.Cos(agent.angle) + agent.position.x);
+        int Fy = (int) (sensorOffset * Mathf.Sin(agent.angle) + agent.position.x);
+
+        if (BoundsCheck(Fx) && BoundsCheck(Fy))
+        {
+            F = trailMap[Fx, Fy];
+        }
+        
+        // Right Sensor
+        int FRx = (int) (sensorOffset * Mathf.Cos(agent.angle - sensorAngle) + agent.position.x);
+        int FRy = (int) (sensorOffset * Mathf.Sin(agent.angle - sensorAngle) + agent.position.x);
+
+        if (BoundsCheck(FRx) && BoundsCheck(FRy))
+        {
+            FR = trailMap[FRx, FRy];
+        }
+
+        return new float[] {FL, F, FR};
+    }
+
+    private void Decay()
+    {
+        for(int i = 0; i < resolution; i++)
+        {
+            for(int j = 0; j < resolution; j++)
             {
-                Destroy(obj);
+                trailMap[i,j] *= decayFactor;
             }
-
-            agentObjects.Clear();
         }
     }
 
-    private void RenderAgents()
+    private void RenderTrail()
     {
-        DestroyAgents();
-        foreach (Agent agent in agentList)
+        GameObject background = this.gameObject.transform.Find("Background").gameObject;
+
+        for (int x = 0; x < resolution; x++)
         {
-            RenderAgent(agent);
+            for (int y = 0; y < resolution; y++)
+            {
+                Color c = new Color(trailMap[x,y], trailMap[x,y], trailMap[x,y], 1);
+                trailTexture.SetPixel(x, y, c);
+            }
         }
+
+        trailTexture.Apply();
+
+        background.GetComponent<Renderer>().material.SetTexture("_MainTex", trailTexture);
     }
 
-    // create a gameobject for the agent
-    private void RenderAgent(Agent agent)
-    {
-        GameObject a = new GameObject(
-            "Agent " + agent.position.x * resolution + agent.position.y, 
-            typeof(MeshFilter), 
-            typeof(MeshRenderer)
-        );
-        a.GetComponent<MeshFilter>().mesh = mesh;
-        a.GetComponent<MeshRenderer>().material = new Material(material);
-        a.transform.position = new Vector3(agent.position.x, agent.position.y, 0);
-        a.transform.parent = this.transform;
 
-        agentObjects.Add(a);
-    }
+    // ? Used to test object behavior by instantiating objects; no longer
+    // ? necessary, but leaving it in case I wanna do something interesting
+
+    // private void DestroyAgents()
+    // {
+    //     if (agentObjects.Count > 0)
+    //     {
+    //         foreach (GameObject obj in agentObjects)
+    //         {
+    //             Destroy(obj);
+    //         }
+
+    //         agentObjects.Clear();
+    //     }
+    // }
+
+    // private void RenderAgents()
+    // {
+    //     DestroyAgents();
+    //     foreach (Agent agent in agentList)
+    //     {
+    //         RenderAgent(agent);
+    //     }
+    // }
+
+    // // create a gameobject for the agent
+    // private void RenderAgent(Agent agent)
+    // {
+    //     GameObject a = new GameObject(
+    //         "Agent " + agent.position.x * resolution + agent.position.y, 
+    //         typeof(MeshFilter), 
+    //         typeof(MeshRenderer)
+    //     );
+    //     a.GetComponent<MeshFilter>().mesh = mesh;
+    //     a.GetComponent<MeshRenderer>().material = new Material(material);
+    //     a.AddComponent<TrailRenderer>();
+    //     a.transform.position = new Vector3(agent.position.x, agent.position.y, 0);
+    //     a.transform.parent = this.transform;
+
+    //     agentObjects.Add(a);
+    // }
 }
