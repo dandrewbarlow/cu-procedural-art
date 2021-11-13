@@ -17,6 +17,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using static ListExtensions;
 
 /*
  * https://payload.cargocollective.com/1/18/598881/13800048/diagram_670.jpg
@@ -108,6 +109,9 @@ public class Physarum : MonoBehaviour
     [Range(0f,1f)]
     public float sensitivityThreshold;
 
+    [Range(0f,1f)]
+    public float depositPerStep;
+
     [Range(0f,5f)]
     public float diffusionKernelSize;
 
@@ -120,6 +124,7 @@ public class Physarum : MonoBehaviour
     // Data Structures
     private Agent[,] agentMap;
     private List<Agent> agentList;
+    private List<GameObject> agentObjects;
     private float[,] trailMap;
 
     // Utility
@@ -133,6 +138,7 @@ public class Physarum : MonoBehaviour
 
         agentMap = new Agent[resolution,resolution];
         agentList = new List<Agent>();
+        agentObjects = new List<GameObject>();
 
         int spawnedAgents = 0;
 
@@ -164,7 +170,10 @@ public class Physarum : MonoBehaviour
         trailMap = new float[resolution, resolution];
     }
 
-    void Update(){}
+    void Update(){
+        MotorStage();
+        RenderAgents();
+    }
 
     // (Jones, 133)
     private void MotorStage()
@@ -186,40 +195,37 @@ public class Physarum : MonoBehaviour
         */
 
         // TODO: random selection process to avoid sequential bias
-        // loop through agentMap 
-            // (agentMap.Length == resoution, but this is more descriptive)
-        for (int i=0; i < agentMap.Length; i++)
+        // TODO: shuffle agentList
+        agentList.Shuffle();
+
+        // transition
+        List<Agent> newAgentList = new List<Agent>();
+
+        foreach(Agent agent in agentList)
         {
-            for (int j=0; j < agentMap.Length; j++)
+            // try to move agent 
+                // if failed, the heading is rotated so newAgent always replaces agent
+            Agent newAgent = attemptMove(agent);
+
+            newAgentList.Add(newAgent);
+
+            // apply agent move to agentMap
+            if (newAgent.position != agent.position)
             {
-                // check if an agent exists in current pos
-                if (agentMap[i,j] != null)
-                {
-                    Agent agent = agentMap[i,j];
+                agentMap[(int)agent.position.x, (int)agent.position.y] = null;
 
-                    // try to move agent
-                    Agent newAgent = attemptMove(agent);
+                int x = (int)Mathf.Floor(newAgent.position.x);
+                int y = (int)Mathf.Floor(newAgent.position.y);
+                agentMap[x, y] = newAgent;
 
-                    // apply agent move if it happened
-                    if (newAgent.position != agent.position)
-                    {
-                        agentMap[i,j] = null;
-
-                        // over complicated, but just putting agent in new spot in the array
-                        agentMap[(int)Mathf.Floor(newAgent.position.x), (int)Mathf.Floor(newAgent.position.y)] = newAgent;
-
-                        // TODO: DEPOSIT CHEMOATTRACTANT
-
-                    }
-                    // if it didn't move, randomly change orientation
-                    else
-                    {
-                        
-                    }
-                }
+                Deposit(x, y);
             }
         }
 
+        // shallow list copy
+        // https://stackoverflow.com/questions/10627141/how-can-i-replace-the-contents-of-one-listint-with-those-from-another
+        agentList.Clear(); //= new List<Agent>(newAgentList);
+        agentList.AddRange(newAgentList);
     }
 
     private Agent attemptMove(Agent agent)
@@ -230,15 +236,51 @@ public class Physarum : MonoBehaviour
             stepSize * Mathf.Sin(agent.angle)
         );
 
-        // if new position is already occupied
-        if ( agentMap[(int)Mathf.Floor(newPos.x), (int)Mathf.Floor(newPos.y)] == null)
+        // integer indices for agentMap
+        int x = (int)Mathf.Floor(newPos.x);
+        int y = (int)Mathf.Floor(newPos.y);
+
+        // bounds check
+        if (!BoundsCheck(x) || !BoundsCheck(y))
+        {
+            agent.angle += 180;
+            return agent;
+        }
+
+        // if new position is not occupied
+        if ( agentMap[x, y] == null)
         {
             return new Agent(agent.angle, newPos, new Vector2(resolution,resolution));
         }
         else
         {
+            agent.angle += Mathf.Pow(-1, Random.Range(0, 1)) * agentRotationAngle;
             return agent;
         }
+    }
+
+    // TODO: DEPOSIT CHEMOATTRACTANT
+    private void Deposit(int x, int y)
+    {
+        // diffuse Chemoattractant in an area (s=diffusionKernelSize) of a given position
+
+        for (int i = x - (int)(diffusionKernelSize / 2); i < x + (int)(diffusionKernelSize / 2); i++)
+        {
+            for (int j = y - (int)(diffusionKernelSize / 2); j < y + (int)(diffusionKernelSize / 2); j++)
+            {
+                if (BoundsCheck(i) && BoundsCheck(j))
+                {
+                    trailMap[i,j] += depositPerStep;
+                }
+            }
+        }
+
+    }
+    
+    // returns true if within bounds, false if not
+    private bool BoundsCheck(int i)
+    {
+        return (i >= 0 || i < resolution);
     }
 
     private void SensoryStage()
@@ -276,15 +318,41 @@ public class Physarum : MonoBehaviour
         */
     }
 
-    public static void Shuffle<T>(this IList<T> list)  
-    {  
-        int n = list.Count;  
-        while (n > 1) {  
-            n--;  
-            int k = rng.Next(n + 1);  
-            T value = list[k];  
-            list[k] = list[n];  
-            list[n] = value;  
-        }  
+    private void DestroyAgents()
+    {
+        if (agentObjects.Count > 0)
+        {
+            foreach (GameObject obj in agentObjects)
+            {
+                Destroy(obj);
+            }
+
+            agentObjects.Clear();
+        }
+    }
+
+    private void RenderAgents()
+    {
+        DestroyAgents();
+        foreach (Agent agent in agentList)
+        {
+            RenderAgent(agent);
+        }
+    }
+
+    // create a gameobject for the agent
+    private void RenderAgent(Agent agent)
+    {
+        GameObject a = new GameObject(
+            "Agent " + agent.position.x * resolution + agent.position.y, 
+            typeof(MeshFilter), 
+            typeof(MeshRenderer)
+        );
+        a.GetComponent<MeshFilter>().mesh = mesh;
+        a.GetComponent<MeshRenderer>().material = new Material(material);
+        a.transform.position = new Vector3(agent.position.x, agent.position.y, 0);
+        a.transform.parent = this.transform;
+
+        agentObjects.Add(a);
     }
 }

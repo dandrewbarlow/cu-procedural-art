@@ -247,7 +247,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mesh: {fileID: -2432090755550338912, guid: 5addbbb0a31acba96950e7eacef530a2, type: 3}
   material: {fileID: 2100000, guid: ec0b1bfbcc5c94f5791d712f10919580, type: 2}
-  agentAmount: 100
+  agentAmount: 500
   agentRotationAngle: 45
   stepSize: 1
   sensorAngle: 45
@@ -283,7 +283,6 @@ GameObject:
   - component: {fileID: 751864318}
   - component: {fileID: 751864317}
   - component: {fileID: 751864316}
-  - component: {fileID: 751864319}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -326,7 +325,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 24
+  orthographic size: 100
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -350,27 +349,9 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 751864315}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -10}
+  m_LocalPosition: {x: 100, y: 100, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &751864319
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 751864315}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b5b2248e1d1824d4299352ebb0330cbb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  computeShader: {fileID: 7200000, guid: f9e3d8d68a76140519340e03ddefb121, type: 3}
-  renderTexture: {fileID: 0}
-  mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
-  material: {fileID: 10302, guid: 0000000000000000f000000000000000, type: 0}
-  count: 50
-  repetitions: 10
