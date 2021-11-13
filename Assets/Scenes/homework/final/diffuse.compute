@@ -1,0 +1,47 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel Diffuse
+
+// input array
+RWStructuredBuffer<float> array;
+// resolution
+int res;
+// kernel size (note: implemented as radius, not diameter)
+int kernelSize;
+
+bool boundsCheck(float2 pos)
+{
+    return (pos.xy >= 0.0 && pos.xy < res);
+}
+
+[numthreads(10, 10, 1)]
+void Diffuse (uint3 id : SV_DispatchThreadID)
+{
+    float sum = 0.0;
+    float n = 0.0;
+
+    for (int i = id.x - kernelSize; i <= id.x + kernelSize; i++)
+    {
+        for (int j = id.y - kernelSize; j <= id.y + kernelSize; j++)
+        {
+            if (boundsCheck(float2(i, j)))
+            {
+                sum += array[i + (res * j)];
+                // ! why is this never called????!!!!
+                n++;
+            }
+        }
+    }
+
+    float average = sum / n;
+
+    if (n == 0 || average < 0.0001)
+    {
+        // array[id.x + (id.y * res)] = 0.0;
+        array[id.x + id.y * res] = id.x;
+    }
+    else
+    {
+        // ! for some reason getting NaN errors. bounds check either not passing or some logic f'd up
+        array[id.x + id.y * int(res)] = average;
+    }
+}

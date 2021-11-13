@@ -245,20 +245,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e11038e5c327fb0fc86ab41fde99bae0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  resolution: 500
+  diffuseShader: {fileID: 7200000, guid: e83b7d15a79893af39312946b2f2e00d, type: 3}
   mesh: {fileID: -2432090755550338912, guid: 5addbbb0a31acba96950e7eacef530a2, type: 3}
   material: {fileID: 2100000, guid: ec0b1bfbcc5c94f5791d712f10919580, type: 2}
   agentAmount: 500
-  agentRotationAngle: 45
-  stepSize: 1
-  sensorAngle: 45
-  sensorWidth: 1
+  agentRotationAngle: 90
+  spawnRange: 155
+  stepSize: 5
+  sensorAngle: 25
   sensorOffset: 9
-  resolution: 500
-  probabilityOfRandomChange: 0.407
+  probabilityOfRandomChange: 0.751
   sensitivityThreshold: 0
-  depositPerStep: 1
-  diffusionKernelSize: 5
-  decayFactor: 0.67
+  depositPerStep: 4.63
+  diffusionKernelSize: 6
+  decayFactor: 0.932
 --- !u!4 &213142799
 Transform:
   m_ObjectHideFlags: 0

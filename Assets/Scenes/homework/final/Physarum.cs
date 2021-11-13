@@ -52,13 +52,26 @@ public class Physarum : MonoBehaviour
     // Parameters (for more info, see Jones, 134)
 
     // Misc Settings
+    [Header("Misc. Settings")]
+    public Camera camera;
+    public GameObject canvas;
+
     public int resolution = 200;
+    public Color color;
+
+    [Header("GPU Settings EXPERIMENTAL")]
+    public bool enableGPU = false;
+
+    // Shaders
+    public ComputeShader diffuseShader;
 
     // particle object settings
-    public Mesh mesh;
-    public Material material;
+    // public Mesh mesh;
+    // public Material material;
 
     // Agent Variables
+    [Header("Agent Variables")]
+    [Range(10,10000)]
     public int agentAmount = 100;
 
     [Range(0f,90f)]
@@ -67,33 +80,36 @@ public class Physarum : MonoBehaviour
     [Range(1, 500)]
     public int spawnRange = 50;
 
+    [Range(1, 100)]
     public int stepSize = 1;
 
     // Sensor Variables
+    [Header("Sensor Variables")]
+    [Range(0,90)]
     public float sensorAngle = 45;
 
     // public int sensorWidth = 1;
 
+    [Range(1,20)]
     public int sensorOffset = 9;
 
 
+    [Header("Environment Variables")]
     [Range(0f,1f)]
     public float probabilityOfRandomChange;
 
-    [Range(0f,1f)]
+    [Range(0f,10f)]
     public float sensitivityThreshold;
 
     [Range(0f,5f)]
     public float depositPerStep;
 
-    [Range(2,6)]
-    public int diffusionKernelSize = 3;
+    [Range(0,6)]
+    public int diffusionKernelSize = 1;
 
     [Range(0f, 1f)]
     public float decayFactor;
 
-    // Display
-    private Texture2D trailTexture;
     // private Sprite trailSprite;
     // private SpriteRenderer spriteRenderer;
 
@@ -105,12 +121,16 @@ public class Physarum : MonoBehaviour
     private List<GameObject> agentObjects;
     private float[,] trailMap;
 
+    // Display
+    private Texture2D trailTexture;
 
     // METHODS //////////////////////////////////////////////////
 
     void Start(){
 
         // INITIALIZATION //////////////////////////////
+
+        initializeCamera();
 
         // create data structures
         agentMap = new Agent[resolution,resolution];
@@ -155,12 +175,29 @@ public class Physarum : MonoBehaviour
         }
     }
 
+    void initializeCamera()
+    {
+        Vector2 center = new Vector2( ((float) resolution) / 2f, ((float) resolution) / 2f );
+        camera.transform.position = new Vector3(center.x, center.y, -10);
+        camera.orthographicSize = center.x / 2;
+        canvas.transform.position = new Vector3(center.x, center.y, 0);
+        canvas.transform.localScale = new Vector3(center.x, center.y, 1);
+    }
+
     void Update(){
         MotorStage();
         SensoryStage();
-        // RenderAgents();
-        RenderTrail();
+        if (enableGPU)
+        {
+            DiffuseGPU();
+        }
+        else
+        {
+            DiffuseCPU();
+        }
         Decay();
+        RenderTrail();
+        // RenderAgents();
     }
 
     // (Jones, 133)
@@ -236,38 +273,95 @@ public class Physarum : MonoBehaviour
     private void Deposit(int x, int y)
     {
         trailMap[x,y] += depositPerStep;
+    }
 
-        // diffuse Chemoattractant in an area (s=diffusionKernelSize) of a given position
-        // uses mean filter https://homepages.inf.ed.ac.uk/rbf/HIPR2/mean.htm
+    // ! WIP
+    private void DiffuseGPU()
+    {
+        ComputeBuffer trailBuffer = new ComputeBuffer(
+            trailMap.Length,
+            sizeof(float)
+        );
 
-        int n = 0;
-        float sum = 0;
+        trailBuffer.SetData(trailMap);
 
-        for (int i = x - (diffusionKernelSize / 2); i < x + (diffusionKernelSize / 2); i++)
+        diffuseShader.SetBuffer(0, "array", trailBuffer);
+        diffuseShader.SetInt("res", resolution);
+        diffuseShader.SetInt("kernelSize", diffusionKernelSize);
+
+        int kernelHandle = diffuseShader.FindKernel("Diffuse");
+
+        // ! I don't rly understand how threads work. mainly using trial and error
+        // https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/sv-dispatchthreadid
+        diffuseShader.Dispatch(
+            kernelHandle,
+            resolution / 10,
+            resolution / 10,
+            1
+        );
+
+        float[] trailArray = new float[resolution * resolution];
+        trailBuffer.GetData(trailArray);
+
+        for(int i = 0; i < resolution; i++)
         {
-            for (int j = y - (diffusionKernelSize / 2); j < y + (diffusionKernelSize / 2); j++)
+            for(int j = 0; j < resolution; j++)
             {
-                if (BoundsCheck(i) && BoundsCheck(j))
-                {
-                    sum += trailMap[i,j];
-                    n++;
-                }
+                trailMap[i,j] = trailArray[i + j * resolution];
             }
         }
 
-        float average = sum / (float)n;
-        for (int i = x - (int)(diffusionKernelSize / 2); i < x + (int)(diffusionKernelSize / 2); i++)
+        trailBuffer.Dispose();
+
+
+        if (Random.Range(0f,1f) < 0.04)
         {
-            for (int j = y - (int)(diffusionKernelSize / 2); j < y + (int)(diffusionKernelSize / 2); j++)
+            // Debug.Log(trailMap[Random.Range(0,resolution),Random.Range(0,resolution)]);
+            Debug.Log(trailArray[Random.Range(0,resolution*resolution)]);
+        }
+    }
+
+    private void DiffuseCPU()
+    {
+        // ! sequential bias
+        for(int x = 0; x < resolution; x++)
+        {
+            for (int y = 0; y < resolution; y++)
             {
-                if (BoundsCheck(i) && BoundsCheck(j))
+
+                // diffuse Chemoattractant in an area (s=diffusionKernelSize) of a given position
+                // uses mean filter https://homepages.inf.ed.ac.uk/rbf/HIPR2/mean.htm
+
+                int n = 0;
+                float sum = 0;
+
+                for (int i = x-diffusionKernelSize; i <= x+diffusionKernelSize; i++)
                 {
-                    trailMap[i,j] = average;
+                    for (int j = y-diffusionKernelSize; j <= y+diffusionKernelSize; j++)
+                    {
+                        if (BoundsCheck(i) && BoundsCheck(j))
+                        {
+                            sum += trailMap[i,j];
+                            n++;
+                        }
+                    }
+                }
+
+                float average = sum / (float)n;
+                for (int i = x - (int)(diffusionKernelSize / 2); i < x + (int)(diffusionKernelSize / 2); i++)
+                {
+                    for (int j = y - (int)(diffusionKernelSize / 2); j < y + (int)(diffusionKernelSize / 2); j++)
+                    {
+                        if (BoundsCheck(i) && BoundsCheck(j))
+                        {
+                            trailMap[i,j] = average;
+                        }
+                    }
                 }
             }
         }
     }
-    
+
     // returns true if within bounds, false if not
     private bool BoundsCheck(int i)
     {
@@ -366,62 +460,70 @@ public class Physarum : MonoBehaviour
 
     private void RenderTrail()
     {
-        GameObject background = this.gameObject.transform.Find("Background").gameObject;
-
         for (int x = 0; x < resolution; x++)
         {
             for (int y = 0; y < resolution; y++)
             {
-                Color c = new Color(trailMap[x,y], trailMap[x,y], trailMap[x,y], 1);
-                trailTexture.SetPixel(x, y, c);
+                if (trailMap[x,y] > sensitivityThreshold)
+                {
+                    Color c = new Color(trailMap[x,y], trailMap[x,y], trailMap[x,y], 1);
+                    c *= color;
+                    trailTexture.SetPixel(x, y, c);
+                }
+                else
+                {
+                    trailTexture.SetPixel(x,y,new Color(0,0,0,1));
+                }
             }
         }
 
         trailTexture.Apply();
 
-        background.GetComponent<Renderer>().material.SetTexture("_MainTex", trailTexture);
+        canvas.GetComponent<Renderer>().material.SetTexture("_MainTex", trailTexture);
     }
 
+/*
 
-    // ? Used to test object behavior by instantiating objects; no longer
-    // ? necessary, but leaving it in case I wanna do something interesting
+    ? Used to test object behavior by instantiating objects; no longer
+    ? necessary, but leaving it in case I wanna do something interesting
 
-    // private void DestroyAgents()
-    // {
-    //     if (agentObjects.Count > 0)
-    //     {
-    //         foreach (GameObject obj in agentObjects)
-    //         {
-    //             Destroy(obj);
-    //         }
+    private void DestroyAgents()
+    {
+        if (agentObjects.Count > 0)
+        {
+            foreach (GameObject obj in agentObjects)
+            {
+                Destroy(obj);
+            }
 
-    //         agentObjects.Clear();
-    //     }
-    // }
+            agentObjects.Clear();
+        }
+    }
 
-    // private void RenderAgents()
-    // {
-    //     DestroyAgents();
-    //     foreach (Agent agent in agentList)
-    //     {
-    //         RenderAgent(agent);
-    //     }
-    // }
+    private void RenderAgents()
+    {
+        DestroyAgents();
+        foreach (Agent agent in agentList)
+        {
+            RenderAgent(agent);
+        }
+    }
 
-    // // create a gameobject for the agent
-    // private void RenderAgent(Agent agent)
-    // {
-    //     GameObject a = new GameObject(
-    //         "Agent " + agent.position.x * resolution + agent.position.y, 
-    //         typeof(MeshFilter), 
-    //         typeof(MeshRenderer)
-    //     );
-    //     a.GetComponent<MeshFilter>().mesh = mesh;
-    //     a.GetComponent<MeshRenderer>().material = new Material(material);
-    //     a.AddComponent<TrailRenderer>();
-    //     a.transform.position = new Vector3(agent.position.x, agent.position.y, 0);
-    //     a.transform.parent = this.transform;
+    // create a gameobject for the agent
+    private void RenderAgent(Agent agent)
+    {
+        GameObject a = new GameObject(
+            "Agent " + agent.position.x * resolution + agent.position.y, 
+            typeof(MeshFilter), 
+            typeof(MeshRenderer)
+        );
+        a.GetComponent<MeshFilter>().mesh = mesh;
+        a.GetComponent<MeshRenderer>().material = new Material(material);
+        a.AddComponent<TrailRenderer>();
+        a.transform.position = new Vector3(agent.position.x, agent.position.y, 0);
+        a.transform.parent = this.transform;
 
-    //     agentObjects.Add(a);
-    // }
+        agentObjects.Add(a);
+    }
+*/
 }
