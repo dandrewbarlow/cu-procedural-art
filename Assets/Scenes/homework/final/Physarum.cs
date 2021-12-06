@@ -10,7 +10,6 @@
  * 
  * Jeff Jones- Characteristics of Pattern Formation and Evolution in Approximations of Physarum Transport Networks
  * http://eprints.uwe.ac.uk/15260/1/artl.2010.16.2.pdf
- * 
  */
 
 using System.Collections;
@@ -185,6 +184,7 @@ public class Physarum : MonoBehaviour
     }
 
     void Update(){
+        Interactivity();
         MotorStage();
         SensoryStage();
         if (enableGPU)
@@ -198,6 +198,28 @@ public class Physarum : MonoBehaviour
         Decay();
         RenderTrail();
         // RenderAgents();
+    }
+
+    private void Interactivity()
+    {
+        if (Input.GetMouseButton(0))
+        {
+            Vector2 mousePos = new Vector2(
+                resolution * Input.mousePosition.x / Screen.width, 
+                resolution * Input.mousePosition.y / Screen.height
+            );
+
+            Debug.Log((int)Mathf.Floor(mousePos.x));
+            // check bounds
+            if (mousePos.x >= 0 && mousePos.y >= 0 && mousePos.x < resolution && mousePos.y < resolution)
+            {
+                trailMap[
+                    (int)Mathf.Floor(mousePos.x),
+                    (int)Mathf.Floor(mousePos.y)
+                ] += 1000.0f;
+            }
+        }
+
     }
 
     // (Jones, 133)
