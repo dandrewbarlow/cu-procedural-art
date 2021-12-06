@@ -322,16 +322,7 @@ public class Physarum : MonoBehaviour
             1
         );
 
-        float[] trailArray = new float[resolution * resolution];
-        trailBuffer.GetData(trailArray);
-
-        for(int i = 0; i < resolution; i++)
-        {
-            for(int j = 0; j < resolution; j++)
-            {
-                trailMap[i,j] = trailArray[i + j * resolution];
-            }
-        }
+        trailBuffer.GetData(trailMap);
 
         trailBuffer.Dispose();
 
@@ -339,7 +330,7 @@ public class Physarum : MonoBehaviour
         if (Random.Range(0f,1f) < 0.04)
         {
             // Debug.Log(trailMap[Random.Range(0,resolution),Random.Range(0,resolution)]);
-            Debug.Log(trailArray[Random.Range(0,resolution*resolution)]);
+            // Debug.Log(trailArray[Random.Range(0,resolution*resolution)]);
         }
     }
 
@@ -488,7 +479,9 @@ public class Physarum : MonoBehaviour
             {
                 if (trailMap[x,y] > sensitivityThreshold)
                 {
-                    Color c = new Color(trailMap[x,y], trailMap[x,y], trailMap[x,y], 1);
+                    float val = trailMap[x,y];
+
+                    Color c = new Color(val, val, val, 1);
                     c *= color;
                     trailTexture.SetPixel(x, y, c);
                 }
