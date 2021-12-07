@@ -37,7 +37,7 @@ void Diffuse (uint3 id : SV_DispatchThreadID)
     if (n == 0 || average < 0.0001)
     {
         // array[id.x + (id.y * res)] = 0.0;
-        array[id.x + id.y * res] = id.x;
+        array[id.x + id.y * res] = 0;//id.x;
     }
     else
     {

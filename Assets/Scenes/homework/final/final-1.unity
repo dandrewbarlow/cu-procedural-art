@@ -248,20 +248,21 @@ MonoBehaviour:
   camera: {fileID: 751864317}
   canvas: {fileID: 935318823}
   resolution: 500
-  color: {r: 1, g: 1, b: 1, a: 0}
+  color: {r: 0.07457018, g: 0, b: 1, a: 0}
   enableGPU: 1
   diffuseShader: {fileID: 7200000, guid: e83b7d15a79893af39312946b2f2e00d, type: 3}
-  agentAmount: 500
+  agentAmount: 7599
   agentRotationAngle: 90
-  spawnRange: 155
-  stepSize: 5
+  spawnRange: 118
+  stepSize: 3
   sensorAngle: 25
+  sensorWidth: 1
   sensorOffset: 9
   probabilityOfRandomChange: 0.751
   sensitivityThreshold: 0
   depositPerStep: 4.63
-  diffusionKernelSize: 6
-  decayFactor: 0.5
+  diffusionKernelSize: 4
+  decayFactor: 0.876
 --- !u!4 &213142799
 Transform:
   m_ObjectHideFlags: 0

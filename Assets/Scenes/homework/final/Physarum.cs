@@ -86,8 +86,8 @@ public class Physarum : MonoBehaviour
     [Header("Sensor Variables")]
     [Range(0,90)]
     public float sensorAngle = 45;
-
-    // public int sensorWidth = 1;
+    [Range(0,10)]
+    public int sensorWidth = 1;
 
     [Range(1,20)]
     public int sensorOffset = 9;
@@ -209,7 +209,6 @@ public class Physarum : MonoBehaviour
                 resolution * Input.mousePosition.y / Screen.height
             );
 
-            Debug.Log((int)Mathf.Floor(mousePos.x));
             // check bounds
             if (mousePos.x >= 0 && mousePos.y >= 0 && mousePos.x < resolution && mousePos.y < resolution)
             {
@@ -434,27 +433,33 @@ public class Physarum : MonoBehaviour
         int FLx = (int) (sensorOffset * Mathf.Cos(agent.angle + sensorAngle) + agent.position.x);
         int FLy = (int) (sensorOffset * Mathf.Sin(agent.angle + sensorAngle) + agent.position.x);
 
-        if (BoundsCheck(FLx) && BoundsCheck(FLy))
-        {
-            FL = trailMap[FLx, FLy];
-        }
-
         // Middle Sensor
         int Fx = (int) (sensorOffset * Mathf.Cos(agent.angle) + agent.position.x);
         int Fy = (int) (sensorOffset * Mathf.Sin(agent.angle) + agent.position.x);
 
-        if (BoundsCheck(Fx) && BoundsCheck(Fy))
-        {
-            F = trailMap[Fx, Fy];
-        }
-        
         // Right Sensor
         int FRx = (int) (sensorOffset * Mathf.Cos(agent.angle - sensorAngle) + agent.position.x);
         int FRy = (int) (sensorOffset * Mathf.Sin(agent.angle - sensorAngle) + agent.position.x);
 
-        if (BoundsCheck(FRx) && BoundsCheck(FRy))
+        for (int i = -sensorWidth; i < sensorWidth; i++)
         {
-            FR = trailMap[FRx, FRy];
+            for (int j = -sensorWidth; j < sensorWidth; j++)
+            {
+                if (BoundsCheck(FLx + i) && BoundsCheck(FLy + j))
+                {
+                    FL += trailMap[FLx+i,FLy+j];
+                }
+
+                if (BoundsCheck(Fx + i) && BoundsCheck(Fy + j))
+                {
+                    F += trailMap[Fx+i, Fy+j];
+                }
+
+                if (BoundsCheck(FRx + i) && BoundsCheck(FRy + j))
+                {
+                    FR += trailMap[FRx+i, FRy+j];
+                }
+            }
         }
 
         return new float[] {FL, F, FR};
