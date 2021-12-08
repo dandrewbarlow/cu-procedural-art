@@ -71,26 +71,26 @@ public class Physarum : MonoBehaviour
     // Agent Variables
     [Header("Agent Variables")]
     [Range(10,10000)]
-    public int agentAmount = 100;
+    public int agentAmount;
 
     [Range(0f,90f)]
-    public int agentRotationAngle = 45;
+    public int agentRotationAngle;
 
-    [Range(1, 500)]
-    public int spawnRange = 50;
+    [Range(0f, 1f)]
+    public float spawnRange;
 
     [Range(1, 100)]
-    public int stepSize = 1;
+    public int stepSize;
 
     // Sensor Variables
     [Header("Sensor Variables")]
     [Range(0,90)]
-    public float sensorAngle = 45;
+    public float sensorAngle;
     [Range(0,10)]
-    public int sensorWidth = 1;
+    public int sensorWidth;
 
     [Range(1,20)]
-    public int sensorOffset = 9;
+    public int sensorOffset;
 
 
     [Header("Environment Variables")]
@@ -100,11 +100,11 @@ public class Physarum : MonoBehaviour
     [Range(0f,10f)]
     public float sensitivityThreshold;
 
-    [Range(0f,5f)]
+    [Range(0f,10f)]
     public float depositPerStep;
 
-    [Range(0,6)]
-    public int diffusionKernelSize = 1;
+    [Range(0,10)]
+    public int diffusionKernelSize;
 
     [Range(0f, 1f)]
     public float decayFactor;
@@ -142,17 +142,34 @@ public class Physarum : MonoBehaviour
         for(int i = 0; i < agentAmount; i++)
         {
 
-            int min = (resolution / 2) - spawnRange;
-            int max = (resolution / 2) + spawnRange;
-            int x = Random.Range(min, max);
-            int y = Random.Range(min, max);
+            // int min = (resolution / 2) - spawnRange;
+            // int max = (resolution / 2) + spawnRange;
+            // int x = Random.Range(min, max);
+            // int y = Random.Range(min, max);
+            float theta = Random.Range(0f,2f*Mathf.PI);
+            int x, y;
+            x = (int)Mathf.Floor( (resolution / 4) + (0.5f*Mathf.Cos(theta) + 0.5f) * resolution * spawnRange);
+            y = (int)Mathf.Floor( (resolution / 4) + (0.5f*Mathf.Sin(theta) + 0.5f) * resolution * spawnRange);
 
+            int tries = 0;
             // find valid random placement
-            while(agentMap[x,y] != null)
+            if (!BoundsCheck(x) || !BoundsCheck(y)){break;}
+
+            while(agentMap[x,y] != null && tries < 100)
             {
-                x = Random.Range(0, resolution);
-                y = Random.Range(0, resolution);
+            x = (int)Mathf.Floor( (resolution / 4) + (0.5f*Mathf.Cos(theta) + 0.5f) * resolution * spawnRange);
+            y = (int)Mathf.Floor( (resolution / 4) + (0.5f*Mathf.Sin(theta) + 0.5f) * resolution * spawnRange);
+                // x = (int)Mathf.Floor( (0.5f*Mathf.Cos(theta) + 0.5f) * resolution * spawnRange);
+                // y = (int)Mathf.Floor( (0.5f*Mathf.Sin(theta) + 0.5f) * resolution * spawnRange);
+                // x = Random.Range(0, resolution);
+                // y = Random.Range(0, resolution);
+
+                tries++;
             }
+            // if (tries == 100)
+            // {
+            //     break;
+            // }
 
             // create a new agent
             Agent agent = new Agent(
@@ -164,6 +181,8 @@ public class Physarum : MonoBehaviour
             agentMap[x,y] = agent;
             agentList.Add(agent);
         }
+
+        Debug.Log(agentList.Count);
 
         for (int x = 0; x < resolution; x++)
         {
@@ -285,7 +304,8 @@ public class Physarum : MonoBehaviour
         {
             if (Random.Range(0f, 1f) < probabilityOfRandomChange)
             {
-                agent.angle += Mathf.Pow(-1, Random.Range(0, 1)) * agentRotationAngle;
+                // float sign = Random.Range(0f, 1f )
+                agent.angle += Mathf.Pow(-1, Random.Range(0, 2)) * agentRotationAngle * Random.Range(0f,1f);
             }
             return agent;
         }
@@ -402,7 +422,7 @@ public class Physarum : MonoBehaviour
             else if (F < FL && F < FR)
             {
                 // rotate randomly left or right by RA
-                agent.angle += Mathf.Pow(-1, Random.Range(0, 1)) * agentRotationAngle;
+                agent.angle += Mathf.Pow(-1, Random.Range(0, 2)) * agentRotationAngle;
             }
             else if (FL < FR)
             {
@@ -431,15 +451,15 @@ public class Physarum : MonoBehaviour
 
         // Left Sensor
         int FLx = (int) (sensorOffset * Mathf.Cos(agent.angle + sensorAngle) + agent.position.x);
-        int FLy = (int) (sensorOffset * Mathf.Sin(agent.angle + sensorAngle) + agent.position.x);
+        int FLy = (int) (sensorOffset * Mathf.Sin(agent.angle + sensorAngle) + agent.position.y);
 
         // Middle Sensor
         int Fx = (int) (sensorOffset * Mathf.Cos(agent.angle) + agent.position.x);
-        int Fy = (int) (sensorOffset * Mathf.Sin(agent.angle) + agent.position.x);
+        int Fy = (int) (sensorOffset * Mathf.Sin(agent.angle) + agent.position.y);
 
         // Right Sensor
         int FRx = (int) (sensorOffset * Mathf.Cos(agent.angle - sensorAngle) + agent.position.x);
-        int FRy = (int) (sensorOffset * Mathf.Sin(agent.angle - sensorAngle) + agent.position.x);
+        int FRy = (int) (sensorOffset * Mathf.Sin(agent.angle - sensorAngle) + agent.position.y);
 
         for (int i = -sensorWidth; i < sensorWidth; i++)
         {
